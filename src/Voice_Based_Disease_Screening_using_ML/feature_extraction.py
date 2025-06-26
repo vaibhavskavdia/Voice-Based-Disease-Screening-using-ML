@@ -3,9 +3,12 @@ import pandas as pd
 import numpy as np
 import os
 from tqdm import tqdm
+from dataclasses import dataclass
 
-class features:
-    def extract_features(file_path, sr=22050):
+#class features_class:
+local_file_path="/Users/vaibhavkavdia/Desktop/Projects_for_Resume/Medical/Voice-Based-Disease-Screening-using-ML//Coswara-Data"
+
+def extract_features(file_path, sr=22050):
         y, sr = librosa.load(file_path, sr=sr)
         
         # Basic features
@@ -26,11 +29,14 @@ class features:
         
         # Combine into single feature vector
         features = np.concatenate([mfcc, [zcr], [rms]])
+        
+        if y.size == 0:
+            raise ValueError("Empty audio file")
+
+        
         return features
 
-
-
-    def load_features_from_metadata(metadata_path, data_dir):
+def load_features_from_metadata(metadata_path, data_dir):
         metadata = pd.read_csv(metadata_path)
         X, y = [], []
 
@@ -40,38 +46,49 @@ class features:
             audio_path = os.path.join(data_dir, f"{uid}_cough.wav")
 
             if os.path.exists(audio_path) and label in ("positive", "negative"):
-                features = extract_features(audio_path)
+                features = features.extract_features(audio_path)
                 X.append(features)
                 y.append(1 if label == "positive" else 0)
 
         return np.array(X), np.array(y)
 
-    def file_path_fun(base_dir="/Users/vaibhavkavdia/Desktop/Projects_for_Resume/Medical/Voice-Based-Disease-Screening-using-ML//Coswara-Data"):
-        file_path=[]
-        for root, _, files in os.walk(base_dir):
-            for file in files:
-                if file.endswith(".wav"):
-                    full_path = os.path.join(root, file)
-                    file_path.append(full_path)
-        return file_path
-    def generate_feature_dataframe(base_dir="../Coswara-Data"):
-        file_path = features.file_path_fun(base_dir="/Users/vaibhavkavdia/Desktop/Projects_for_Resume/Medical/Voice-Based-Disease-Screening-using-ML//Coswara-Data")
-        data = []
-    
-        for path in tqdm(paths):
-            try:
-                features = extract_features(path)
-                label = os.path.basename(os.path.dirname(path))  # Use folder name as label
-                data.append([path] + list(features) + [label])
-            except:
-                print("Error extracting:", path)
-        
-        columns = ["path"] + [f"mfcc_{i+1}" for i in range(13)] + ["zcr", "rms", "spectral_centroid", "label"]
-        df = pd.DataFrame(data, columns=columns)
-        return df
+def file_path_fun(base_dir):
+    file_paths = []
+    for root, _, files in os.walk(base_dir):
+        for file in files:
+            if file.endswith(".wav"):
+                full_path = os.path.join(root, file)
+                file_paths.append(full_path)
+    print(f"✅ Found {len(file_paths)} .wav files.")
+    return file_paths
 
-audio_files=features.file_path_fun()
-print(f"Total audio files found: {len(audio_files)}")   
-print("Sample files:")
-for path in audio_files[:]:
-    print(path)
+
+def generate_feature_dataframe(base_dir):
+    paths = file_path_fun(base_dir)
+    data = []
+
+    for path in tqdm(paths):
+        try:
+            features = extract_features(path)
+            label = os.path.basename(os.path.dirname(path))  # folder name
+            data.append([path] + list(features) + [label])
+        except Exception as e:
+            print(f"❌ Error extracting {path}: {e}")
+
+    columns = ["path"] + [f"mfcc_{i+1}" for i in range(13)] + ["zcr", "rms", "label"]
+    df = pd.DataFrame(data, columns=columns)
+    return df
+
+if __name__ == "__main__":
+    BASE_DIR = "/Users/vaibhavkavdia/Desktop/Projects_for_Resume/Medical/Voice-Based-Disease-Screening-using-ML/Coswara-Data"
+    df = generate_feature_dataframe(BASE_DIR)
+    df.to_csv("features.csv", index=False)
+    print("✅ Saved features.csv with shape:", df.shape)
+
+#audio_files=file_path_fun()
+#print(f"Total audio files found: {len(audio_files)}")   
+#print("Sample files:")
+#for path in audio_files[:]:
+#    print(path)
+
+

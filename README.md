@@ -1,1 +1,1 @@
-Voice-Based-Disease-Screening-using-ML
+Voice_Based_Disease_Screening_using_ML
